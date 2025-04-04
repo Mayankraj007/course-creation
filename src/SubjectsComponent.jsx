@@ -4,72 +4,106 @@ import { collection, getDocs } from "firebase/firestore";
 
 const SubjectsComponent = () => {
   const [subjects] = useState(["Maths", "Physics", "Computer Science"]);
-  const [pdfsBySubject, setPdfsBySubject] = useState({});
+  const [filesBySubject, setFilesBySubject] = useState({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchPdfs();
+    fetchFiles();
   }, []);
 
-  const fetchPdfs = async () => {
+  const fetchFiles = async () => {
     setLoading(true);
     try {
-      const querySnapshot = await getDocs(collection(db, "pdfs"));
+      const fileTypes = ["pdfs", "videos", "images"];
+      let allFiles = {};
 
-      // Organize PDFs by subject
-      const pdfsGrouped = {};
-      querySnapshot.docs.forEach((doc) => {
-        const data = doc.data();
-        const subject = data.subject;
+      for (const fileType of fileTypes) {
+        const querySnapshot = await getDocs(collection(db, fileType));
+        querySnapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          const subject = data.subject;
 
-        if (!pdfsGrouped[subject]) {
-          pdfsGrouped[subject] = [];
-        }
-        pdfsGrouped[subject].push({
-          id: doc.id,
-          ...data,
+          if (!allFiles[subject]) {
+            allFiles[subject] = { pdfs: [], videos: [], images: [] };
+          }
+          allFiles[subject][fileType].push({
+            id: doc.id,
+            ...data,
+          });
         });
-      });
+      }
 
-      setPdfsBySubject(pdfsGrouped);
+      setFilesBySubject(allFiles);
     } catch (error) {
-      console.error("Error fetching PDFs:", error);
+      console.error("Error fetching files:", error);
     }
     setLoading(false);
   };
 
   return (
     <div>
-      <h2>Subjects and PDFs</h2>
+      <h2>Subjects and Files</h2>
       {loading ? <p>Loading...</p> : null}
 
       {subjects.map((subject) => (
         <div key={subject} style={{ marginBottom: "20px" }}>
           <h3>{subject}</h3>
+
+          {/* PDFs Section */}
+          <h4>PDFs</h4>
           <ul>
-            {pdfsBySubject[subject]?.length > 0 ? (
-              pdfsBySubject[subject].map((pdf) => (
-                <li key={pdf.id}>
-                  📄 {pdf.name}
-                  <a
-                    href={pdf.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ marginLeft: "10px", color: "blue" }}
-                  >
+            {filesBySubject[subject]?.pdfs?.length > 0 ? (
+              filesBySubject[subject].pdfs.map((file) => (
+                <li key={file.id}>
+                  📄 {file.name}
+                  <a href={file.url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: "10px", color: "blue" }}>
                     View
                   </a>
-                  <a
-                    href={pdf.url}
-                    download={pdf.name}
-                    style={{ marginLeft: "10px", color: "green" }}
-                  >
+                  <a href={file.url} download={file.name} style={{ marginLeft: "10px", color: "green" }}>
                     Download
                   </a>
                 </li>
               ))
             ) : (
               <p>No PDFs available.</p>
+            )}
+          </ul>
+
+          {/* Videos Section */}
+          <h4>Videos</h4>
+          <ul>
+            {filesBySubject[subject]?.videos?.length > 0 ? (
+              filesBySubject[subject].videos.map((file) => (
+                <li key={file.id}>
+                  🎥 {file.name}
+                  <video width="200" controls>
+                    <source src={file.url} type="video/mp4" />
+                  </video>
+                  <a href={file.url} download={file.name} style={{ marginLeft: "10px", color: "green" }}>
+                    Download
+                  </a>
+                </li>
+              ))
+            ) : (
+              <p>No Videos available.</p>
+            )}
+          </ul>
+
+          {/* Images Section */}
+          <h4>Images</h4>
+          <ul>
+            {filesBySubject[subject]?.images?.length > 0 ? (
+              filesBySubject[subject].images.map((file) => (
+                <li key={file.id}>
+                  🖼 {file.name}
+                  <img src={file.url} alt={file.name} width="150" style={{ display: "block", marginTop: "10px" }} />
+                  <a href={file.url} download={file.name} style={{ marginLeft: "10px", color: "green" }}>
+                    Download
+                  </a>
+                </li>
+              ))
+            ) : (
+              <p>No Images available.</p>
             )}
           </ul>
         </div>

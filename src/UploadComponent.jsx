@@ -4,36 +4,44 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 const UploadComponent = () => {
-  const [subject, setSubject] = useState("Maths"); // Default subject
-  const [pdf, setPdf] = useState(null);
+  const [subject, setSubject] = useState("Maths");
+  const [file, setFile] = useState(null);
+  const [fileType, setFileType] = useState("pdf"); // Default file type
   const [uploading, setUploading] = useState(false);
 
   const subjects = ["Maths", "Physics", "Computer Science"];
+  const fileTypes = {
+    pdf: "application/pdf",
+    video: "video/*",
+    image: "image/*",
+  };
 
   const handleUpload = async () => {
-    if (!pdf) {
-      alert("Please select a PDF file.");
+    if (!file) {
+      alert("Please select a file.");
       return;
     }
 
     setUploading(true);
-    const storageRef = ref(storage, `pdfs/${subject}/${pdf.name}`);
+    const filePath = `${fileType}s/${subject}/${file.name}`;
+    const storageRef = ref(storage, filePath);
 
     try {
       // Upload file to Firebase Storage
-      const snapshot = await uploadBytes(storageRef, pdf);
+      const snapshot = await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(snapshot.ref);
 
       // Store file details in Firestore
-      await addDoc(collection(db, "pdfs"), {
+      await addDoc(collection(db, fileType + "s"), {
         subject,
-        name: pdf.name,
+        name: file.name,
         url: downloadURL,
-        timestamp: serverTimestamp(), // ✅ Use Firestore timestamp
+        fileType,
+        timestamp: serverTimestamp(),
       });
 
-      alert("PDF uploaded successfully!");
-      setPdf(null);
+      alert(`${fileType.toUpperCase()} uploaded successfully!`);
+      setFile(null);
     } catch (error) {
       console.error("Error uploading file:", error);
       alert("Error uploading file.");
@@ -43,7 +51,7 @@ const UploadComponent = () => {
 
   return (
     <div>
-      <h2>Upload PDF</h2>
+      <h2>Upload File</h2>
       <label>Choose Subject:</label>
       <select onChange={(e) => setSubject(e.target.value)} value={subject}>
         {subjects.map((sub) => (
@@ -52,9 +60,23 @@ const UploadComponent = () => {
           </option>
         ))}
       </select>
-      <input type="file" accept="application/pdf" onChange={(e) => setPdf(e.target.files[0])} />
+
+      <label>Select File Type:</label>
+      <select onChange={(e) => setFileType(e.target.value)} value={fileType}>
+        {Object.keys(fileTypes).map((type) => (
+          <option key={type} value={type}>
+            {type.toUpperCase()}
+          </option>
+        ))}
+      </select>
+
+      <input
+        type="file"
+        accept={fileTypes[fileType]}
+        onChange={(e) => setFile(e.target.files[0])}
+      />
       <button onClick={handleUpload} disabled={uploading}>
-        {uploading ? "Uploading..." : "Upload PDF"}
+        {uploading ? "Uploading..." : "Upload"}
       </button>
     </div>
   );
